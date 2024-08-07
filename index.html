@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Well Locations</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+</head>
+<body>
+    <h1>Well Location Finder</h1>
+    <div>
+        <input type="text" id="query" placeholder="Enter your query">
+        <button onclick="sendQuery()">Submit</button>
+    </div>
+    <div id="map" style="height: 500px; width: 100%; margin-top: 20px;"></div>
+
+    <script>
+        var map = L.map('map').setView([51.505, -0.09], 2);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+        }).addTo(map);
+
+        function sendQuery() {
+            var query = document.getElementById('query').value;
+            fetch('/query', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ query: query })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    map.eachLayer((layer) => {
+                        if (layer instanceof L.Marker) {
+                            map.removeLayer(layer);
+                        }
+                    });
+
+                    if (Array.isArray(data.results)) {
+                        data.results.forEach(result => {
+                            L.marker([result.latitude, result.longitude]).addTo(map)
+                                .bindPopup(result.well_name ? result.well_name : "Well Location")
+                                .openPopup();
+                        });
+                        if (data.results.length > 0) {
+                            map.setView([data.results[0].latitude, data.results[0].longitude], 10);
+                        }
+                    } else if (data.results) {
+                        L.marker([data.results.latitude, data.results.longitude]).addTo(map)
+                            .bindPopup("Well Location")
+                            .openPopup();
+                        map.setView([data.results.latitude, data.results.longitude], 10);
+                    }
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+    </script>
+</body>
+</html>
